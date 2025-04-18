@@ -3,7 +3,7 @@ const Module = require('../models/Module');
 const Lesson = require('../models/Lesson');
 const Payment = require('../models/Payment');
 const Enrollment = require('../models/Enrollment');
-const { uploadToS3 } = require('../middleware/fileUpload');
+const { upload, uploadFile } = require('../middleware/fileUpload');
 
 // Create course
 exports.createCourse = async (req, res) => {
@@ -37,7 +37,7 @@ exports.createCourse = async (req, res) => {
       whatYouWillLearn: Array.isArray(whatYouWillLearn) ? whatYouWillLearn : [],
       requirements: Array.isArray(requirements) ? requirements : [],
       // Use a placeholder thumbnail initially
-      thumbnail: 'https://via.placeholder.com/800x450?text=Course+Thumbnail'
+      thumbnail: 'https://placehold.co/800x450?text=Course+Thumbnail'
     });
     
     res.status(201).json({
@@ -78,8 +78,8 @@ exports.uploadCourseThumbnail = async (req, res) => {
       });
     }
     
-    // Upload to S3
-    const thumbnailUrl = await uploadToS3(req.file, 'course-thumbnails');
+    // Upload using our smart function
+    const thumbnailUrl = await uploadFile(req.file, 'course-thumbnails');
     
     // Update course with thumbnail URL
     course.thumbnail = thumbnailUrl;
@@ -91,9 +91,10 @@ exports.uploadCourseThumbnail = async (req, res) => {
       thumbnail: thumbnailUrl
     });
   } catch (error) {
+    console.error("Error uploading thumbnail:", error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message || 'Failed to upload thumbnail'
     });
   }
 };
@@ -227,6 +228,9 @@ exports.addModule = async (req, res) => {
     const { courseId } = req.params;
     const { title, description } = req.body;
     
+    console.log("Adding module to course:", courseId);
+    console.log("Module data:", { title, description });
+    
     // Check if course exists and is owned by the creator
     const course = await Course.findOne({
       _id: courseId,
@@ -234,6 +238,7 @@ exports.addModule = async (req, res) => {
     });
     
     if (!course) {
+      console.log("Course not found or not owned by creator");
       return res.status(404).json({
         success: false,
         message: 'Course not found or you do not have permission'
@@ -254,12 +259,15 @@ exports.addModule = async (req, res) => {
       order
     });
     
+    console.log("Module created successfully:", module);
+    
     res.status(201).json({
       success: true,
       message: 'Module added successfully',
       module
     });
   } catch (error) {
+    console.error("Error adding module:", error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -695,8 +703,8 @@ exports.uploadVideo = async (req, res) => {
       });
     }
     
-    // Upload to S3
-    const videoUrl = await uploadToS3(req.file, 'course-videos');
+    // Upload using our smart function
+    const videoUrl = await uploadFile(req.file, 'course-videos');
     
     // Update lesson with video URL
     lesson.content.videoUrl = videoUrl;
@@ -708,9 +716,10 @@ exports.uploadVideo = async (req, res) => {
       videoUrl
     });
   } catch (error) {
+    console.error("Error uploading video:", error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message || 'Failed to upload video'
     });
   }
 };

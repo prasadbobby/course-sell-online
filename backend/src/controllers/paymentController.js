@@ -92,13 +92,13 @@ exports.createOrder = async (req, res) => {
       }
     });
   } catch (error) {
+    console.error("Error creating order:", error);
     res.status(500).json({
       success: false,
       message: error.message
     });
   }
 };
-
 // Verify payment
 exports.verifyPayment = async (req, res) => {
   try {

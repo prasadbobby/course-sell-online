@@ -13,13 +13,15 @@ const moduleSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    required: true
+    required: false, // Change to false or remove the required property
+    default: ""      // Provide a default empty string
   },
   order: {
     type: Number,
     required: true
   }
 }, { timestamps: true });
+
 
 const Module = mongoose.model('Module', moduleSchema);
 

@@ -176,7 +176,7 @@ const fetchCategories = async () => {
                       <SelectValue placeholder="All Categories" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Categories</SelectItem>
+                      <SelectItem value="all">All Categories</SelectItem>
                       {categories.map((cat) => (
                         <SelectItem key={cat} value={cat}>
                           {cat}
@@ -293,7 +293,7 @@ const fetchCategories = async () => {
                       <Card className="overflow-hidden h-full hover:shadow-md transition-shadow">
                         <div className="relative h-40">
                           <Image
-                            src={course.thumbnail || "https://via.placeholder.com/500x300"}
+                            src={course.thumbnail || "https://placehold.co/800x450?text=Course+Thumbnail"}
                             alt={course.title}
                             fill
                             className="object-cover group-hover:scale-105 transition-transform duration-300"

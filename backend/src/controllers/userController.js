@@ -1,7 +1,8 @@
 const User = require('../models/User');
 const Course = require('../models/Course');
 const Enrollment = require('../models/Enrollment');
-const { uploadToS3 } = require('../middleware/fileUpload');
+const { upload, uploadFile } = require('../middleware/fileUpload');
+
 
 // Update user profile
 exports.updateProfile = async (req, res) => {
@@ -35,6 +36,8 @@ exports.updateProfile = async (req, res) => {
 // Upload profile image
 exports.uploadProfileImage = async (req, res) => {
   try {
+    console.log('Profile image upload request received');
+    
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -42,8 +45,9 @@ exports.uploadProfileImage = async (req, res) => {
       });
     }
     
-    // Upload to S3
-    const profileImageUrl = await uploadToS3(req.file, 'profile-images');
+    // Upload using our smart function that tries multiple services
+    const profileImageUrl = await uploadFile(req.file, 'profile-images');
+    console.log('Profile image uploaded to:', profileImageUrl);
     
     // Update user profile with image URL
     const user = await User.findByIdAndUpdate(
@@ -57,12 +61,14 @@ exports.uploadProfileImage = async (req, res) => {
       user
     });
   } catch (error) {
+    console.error('Profile image upload error:', error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message || 'Failed to upload profile image'
     });
   }
 };
+
 
 // Change password
 exports.changePassword = async (req, res) => {

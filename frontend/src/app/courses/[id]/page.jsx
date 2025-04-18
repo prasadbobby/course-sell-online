@@ -54,32 +54,39 @@ export default function CourseDetailPage({ params }) {
     
     const fetchCourseDetails = async () => {
       try {
-        console.log("Fetching course with ID:", id)
-        console.log("Is creator preview:", isCreatorPreview)
+        console.log("Fetching course with ID:", id);
+        console.log("Is creator preview:", isCreatorPreview);
         
         let response;
         
         if (isCreatorPreview && isAuthenticated && user?.role === 'creator') {
           // Use the creator preview endpoint
-          console.log("Fetching from creator preview endpoint")
-          response = await axios.get(`/creator/courses/${id}/preview`)
+          console.log("Fetching from creator preview endpoint");
+          response = await axios.get(`/creator/courses/${id}/preview`);
         } else {
           // Use regular course endpoint
-          console.log("Fetching from regular course endpoint")
-          response = await axios.get(`/courses/${id}`)
+          console.log("Fetching from regular course endpoint");
+          response = await axios.get(`/courses/${id}`);
         }
         
-        console.log("Course data received:", response.data)
-        setCourse(response.data.course)
+        console.log("Course data received:", response.data);
+        
+        // Make sure we handle enrollment status correctly
+        if (response.data.course) {
+          setCourse({
+            ...response.data.course,
+            isEnrolled: !!response.data.course.isEnrolled
+          });
+        }
       } catch (error) {
-        console.error("Error fetching course:", error)
-        console.error("Response data:", error.response?.data)
-        toast.error("Failed to load course details")
+        console.error("Error fetching course:", error);
+        console.error("Response data:", error.response?.data);
+        toast.error("Failed to load course details");
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
-  
+    };
+    
   
   
   const enrollFreeCourse = async () => {
@@ -105,20 +112,24 @@ export default function CourseDetailPage({ params }) {
     }
   }
   
-  const initiatePayment = async () => {
+const initiatePayment = async () => {
     if (!isAuthenticated) {
-      router.push(`/login?redirect=/courses/${id}`)
-      return
+      router.push(`/login?redirect=/courses/${id}`);
+      return;
     }
     
-    setIsEnrolling(true)
+    setIsEnrolling(true);
     try {
+      console.log("Creating payment order for course:", id);
       const response = await axios.post('/payments/create-order', {
         courseId: id
-      })
+      });
       
-      setOrderId(response.data.order.id)
-      setPaymentId(response.data.payment.id)
+      console.log("Payment order created:", response.data);
+      
+      // Initialize orderID and paymentId variables
+      const orderId = response.data.order.id;
+      const paymentId = response.data.payment.id;
       
       // Initialize Razorpay
       const options = {
@@ -127,13 +138,14 @@ export default function CourseDetailPage({ params }) {
         currency: response.data.order.currency,
         name: "Course Platform",
         description: `Payment for ${course.title}`,
-        order_id: response.data.order.id,
+        order_id: orderId,
         handler: function(response) {
           verifyPayment(
             response.razorpay_payment_id,
             response.razorpay_order_id,
-            response.razorpay_signature
-          )
+            response.razorpay_signature,
+            paymentId
+          );
         },
         prefill: {
           name: user.fullName,
@@ -142,39 +154,39 @@ export default function CourseDetailPage({ params }) {
         theme: {
           color: "#0066ff"
         }
-      }
+      };
       
-      const razorpay = new window.Razorpay(options)
-      razorpay.open()
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
     } catch (error) {
-      console.error("Payment initialization error:", error)
-      toast.error("Failed to initialize payment")
-      setIsEnrolling(false)
+      console.error("Payment initialization error:", error);
+      toast.error("Failed to initialize payment");
+      setIsEnrolling(false);
     }
-  }
+  };
   
-  const verifyPayment = async (razorpayPaymentId, razorpayOrderId, razorpaySignature) => {
+  const verifyPayment = async (razorpayPaymentId, razorpayOrderId, razorpaySignature, paymentId) => {
     try {
       const response = await axios.post('/payments/verify', {
-        paymentId: paymentId,
+        paymentId,
         razorpayPaymentId,
         razorpayOrderId,
         razorpaySignature
-      })
+      });
       
-      toast.success("Payment successful! You're now enrolled.")
+      toast.success("Payment successful! You're now enrolled.");
       setCourse({
         ...course,
         isEnrolled: true,
         enrollment: response.data.enrollment
-      })
+      });
     } catch (error) {
-      console.error("Payment verification error:", error)
-      toast.error("Payment verification failed")
+      console.error("Payment verification error:", error);
+      toast.error("Payment verification failed");
     } finally {
-      setIsEnrolling(false)
+      setIsEnrolling(false);
     }
-  }
+  };
   
   if (isLoading) {
     return (
@@ -251,7 +263,7 @@ export default function CourseDetailPage({ params }) {
                 <div className="flex items-center">
                   <div className="relative h-10 w-10 rounded-full overflow-hidden">
                     <Image
-                      src={course.creator.profileImage || "https://via.placeholder.com/100"}
+                      src={course.creator.profileImage || "https://placehold.co/100"}
                       alt={course.creator.fullName}
                       fill
                       className="object-cover"
@@ -264,27 +276,39 @@ export default function CourseDetailPage({ params }) {
                 </div>
                 
                 <div className="ml-auto md:hidden">
-                  {!course.isEnrolled ? (
-                    course.price === 0 ? (
-                      <Button 
-                        onClick={enrollFreeCourse} 
-                        disabled={isEnrolling}
-                      >
-                        {isEnrolling ? "Enrolling..." : "Enroll for Free"}
-                      </Button>
-                    ) : (
-                      <Button 
-                        onClick={initiatePayment} 
-                        disabled={isEnrolling}
-                      >
-                        {isEnrolling ? "Processing..." : `Enroll for ₹${course.price}`}
-                      </Button>
-                    )
-                  ) : (
-                    <Button asChild>
-                      <Link href={`/courses/${id}/learn`}>Continue Learning</Link>
-                    </Button>
-                  )}
+                {!course.isEnrolled ? (
+  course.price === 0 ? (
+    <Button 
+      className="w-full" 
+      size="lg"
+      onClick={enrollFreeCourse}
+      disabled={isEnrolling}
+    >
+      {isEnrolling ? "Enrolling..." : "Enroll Now"}
+    </Button>
+  ) : (
+    <Button 
+      className="w-full" 
+      size="lg"
+      onClick={initiatePayment}
+      disabled={isEnrolling}
+    >
+      {isEnrolling ? "Processing..." : (
+        <span className="flex items-center">
+          <ShoppingCart className="mr-2 h-4 w-4" />
+          Buy Now
+        </span>
+      )}
+    </Button>
+  )
+) : (
+  <Button asChild className="w-full" size="lg">
+    <Link href={`/courses/${id}/learn`}>
+      Continue Learning
+    </Link>
+  </Button>
+)}
+
                 </div>
               </div>
             </div>
@@ -294,7 +318,7 @@ export default function CourseDetailPage({ params }) {
               <div className="bg-background rounded-lg border shadow-sm overflow-hidden sticky top-20">
                 <div className="relative h-48 w-full">
                   <Image
-                    src={course.thumbnail || "https://via.placeholder.com/800x450"}
+                    src={course.thumbnail || "https://placehold.co/800x450?text=Course+Thumbnail"}
                     alt={course.title}
                     fill
                     className="object-cover"
@@ -527,7 +551,7 @@ export default function CourseDetailPage({ params }) {
             <div className="flex items-start gap-4">
               <div className="relative h-24 w-24 rounded-full overflow-hidden">
                 <Image
-                  src={course.creator.profileImage || "https://via.placeholder.com/200"}
+                  src={course.creator.profileImage || "https://placehold.co/200"}
                   alt={course.creator.fullName}
                   fill
                   className="object-cover"

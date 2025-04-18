@@ -121,12 +121,12 @@ export default function AdminDashboard() {
   
   const fetchPendingCreators = async () => {
     try {
-      const response = await axios.get("/admin/users?role=creator&creatorStatus=pending")
-      setPendingCreators(response.data.users)
+      const response = await axios.get("/admin/users?role=creator&creatorStatus=pending");
+      setPendingCreators(response.data.users);
     } catch (error) {
-      console.error("Error fetching pending creators:", error)
+      console.error("Error fetching pending creators:", error);
     }
-  }
+  };
   
   const fetchPendingPayouts = async () => {
     // In a real implementation, there would be an endpoint for pending payouts
@@ -157,26 +157,29 @@ export default function AdminDashboard() {
   }
   
   const approveCreator = async (approved) => {
-    if (!selectedCreator) return
+    if (!selectedCreator) return;
     
-    setIsProcessing(true)
+    setIsProcessing(true);
     try {
       await axios.put(`/admin/users/${selectedCreator._id}`, {
         creatorStatus: approved ? 'approved' : 'rejected'
-      })
+      });
       
-      // Update the pending creators list
-      setPendingCreators(pendingCreators.filter(creator => creator._id !== selectedCreator._id))
+      // Update the pending creators list - remove the creator we just processed
+      setPendingCreators(pendingCreators.filter(creator => creator._id !== selectedCreator._id));
       
-      toast.success(`Creator ${approved ? 'approved' : 'rejected'} successfully`)
-      setSelectedCreator(null)
+      toast.success(`Creator ${approved ? 'approved' : 'rejected'} successfully`);
+      setSelectedCreator(null);
+      
+      // Refresh the pending creators list
+      fetchPendingCreators();
     } catch (error) {
-      console.error("Error updating creator:", error)
-      toast.error("Failed to update creator status")
+      console.error("Error updating creator:", error);
+      toast.error("Failed to update creator status");
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
     }
-  }
+  };
   
   const processPayout = async () => {
     if (!selectedPayout) return
@@ -385,7 +388,7 @@ export default function AdminDashboard() {
                         <div key={course._id} className="flex items-start space-x-4">
                           <div className="relative h-16 w-16 rounded overflow-hidden">
                             <Image
-                              src={course.thumbnail || "https://via.placeholder.com/64"}
+                              src={course.thumbnail || "https://placehold.co/800x450?text=Course+Thumbnail"}
                               alt={course.title}
                               fill
                               className="object-cover"
@@ -443,7 +446,7 @@ export default function AdminDashboard() {
                         <div key={creator._id} className="flex items-start space-x-4">
                           <div className="relative h-12 w-12 rounded-full overflow-hidden">
                             <Image
-                              src={creator.profileImage || "https://via.placeholder.com/48"}
+                              src={creator.profileImage || "https://placehold.co/96"}
                               alt={creator.fullName}
                               fill
                               className="object-cover"
@@ -529,7 +532,7 @@ export default function AdminDashboard() {
                           <div className="flex items-center space-x-3">
                             <div className="relative h-10 w-10 rounded overflow-hidden">
                               <Image
-                                src={course.thumbnail || "https://via.placeholder.com/40"}
+                                src={course.thumbnail || "https://placehold.co/800x450?text=Course+Thumbnail"}
                                 alt={course.title}
                                 fill
                                 className="object-cover"
@@ -617,7 +620,7 @@ export default function AdminDashboard() {
                           <div className="flex items-center space-x-3">
                             <div className="relative h-10 w-10 rounded-full overflow-hidden">
                               <Image
-                                src={user.profileImage || "https://via.placeholder.com/40"}
+                                src={user.profileImage || "https://placehold.co/96"}
                                 alt={user.fullName}
                                 fill
                                 className="object-cover"
@@ -712,7 +715,7 @@ export default function AdminDashboard() {
             <div className="space-y-4 py-4">
               <div className="relative aspect-video w-full rounded-lg overflow-hidden mb-4">
                 <Image
-                  src={selectedCourse.thumbnail || "https://via.placeholder.com/800x450"}
+                  src={selectedCourse.thumbnail || "https://placehold.co/800x450"}
                   alt={selectedCourse.title}
                   fill
                   className="object-cover"
@@ -793,7 +796,7 @@ export default function AdminDashboard() {
               <div className="flex items-center space-x-4">
                 <div className="relative h-20 w-20 rounded-full overflow-hidden">
                   <Image
-                    src={selectedCreator.profileImage || "https://via.placeholder.com/80"}
+                    src={selectedCreator.profileImage || "https://placehold.co/80"}
                     alt={selectedCreator.fullName}
                     fill
                     className="object-cover"

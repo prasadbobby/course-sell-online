@@ -9,23 +9,23 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import axios from "@/lib/axios"
+import { useAuth } from "@/components/auth-provider"
+import { toast } from "sonner"
+import { Upload, User, Mail, Key } from "lucide-react"
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
-import { useAuth } from "@/components/auth-provider"
-import { toast } from "sonner"
-import { Upload, User, Mail, Key } from "lucide-react"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 
 export default function ProfilePage() {
   const { user, isAuthenticated, loading, updateProfile } = useAuth()
@@ -166,18 +166,40 @@ export default function ProfilePage() {
       const formData = new FormData()
       formData.append('image', file)
       
+      console.log('Creating form data with file:', file.name, file.type, file.size)
+      
       // Upload profile image
-      await axios.post("/users/me/profile-image", formData, {
+      const response = await axios.post("/users/me/profile-image", formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       })
       
+      console.log('Upload response:', response.data)
+      
       toast.success("Profile image updated successfully")
-      // Refresh user data
-      await user.getMe()
+      
+      // Update the user in auth context 
+      if (response.data.user && response.data.user.profileImage) {
+        // Use updateProfile from auth context instead of undefined updateUserWithNewImage
+        updateProfile({
+          ...user,
+          profileImage: response.data.user.profileImage
+        });
+      }
     } catch (error) {
       console.error("Error uploading profile image:", error)
+      
+      // More robust error logging
+      if (error.response) {
+        console.error("Error response data:", error.response.data)
+        console.error("Error response status:", error.response.status)
+      } else if (error.request) {
+        console.error("No response received:", error.request)
+      } else {
+        console.error("Error message:", error.message)
+      }
+      
       toast.error("Failed to upload profile image")
     } finally {
       setIsUploading(false)
@@ -218,7 +240,7 @@ export default function ProfilePage() {
                       onClick={handleProfileImageClick}
                     >
                       <Image
-                        src={user?.profileImage || "https://via.placeholder.com/96"}
+                        src={user?.profileImage || "https://placehold.co/96"}
                         alt={user?.fullName || "User"}
                         fill
                         className="object-cover"
@@ -249,6 +271,7 @@ export default function ProfilePage() {
                       </Button>
                     </div>
                   </div>
+
                   
                   <form onSubmit={handleUpdateProfile} className="space-y-6">
                     <div className="space-y-2">

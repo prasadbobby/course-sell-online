@@ -11,6 +11,9 @@ package-lock.json
 !.yarn/releases
 !.yarn/versions
 .next
+.env.local
+.env
+
 
 # testing
 /coverage

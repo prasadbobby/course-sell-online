@@ -4,7 +4,7 @@ const Lesson = require('../models/Lesson');
 const User = require('../models/User');
 const Enrollment = require('../models/Enrollment');
 const { uploadToS3 } = require('../middleware/fileUpload');
-
+const mongoose = require('mongoose');
 // Get all published and approved courses
 exports.getCourses = async (req, res) => {
   try {
@@ -140,6 +140,7 @@ exports.getCourse = async (req, res) => {
       });
       
       isEnrolled = !!enrollment;
+      console.log(`User ${req.user.id} enrollment status for course ${id}:`, isEnrolled);
     }
     
     // Prepare course data

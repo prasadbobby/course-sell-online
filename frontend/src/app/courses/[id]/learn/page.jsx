@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef , use} from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import dynamic from "next/dynamic"
@@ -43,7 +43,7 @@ const ReactPlayer = dynamic(() => import("react-player/lazy"), {
 })
 
 export default function CourseLearnPage({ params }) {
-  const { id } = params
+  const  id  = use(params).id
   const searchParams = useSearchParams()
   const lessonId = searchParams.get("lesson")
   
@@ -90,24 +90,28 @@ export default function CourseLearnPage({ params }) {
   
   const loadLesson = async (lessonId) => {
     try {
-      setIsLoading(true)
-      const response = await axios.get(`/lessons/${lessonId}`)
-      setCurrentLesson(response.data.lesson)
-      setVideoProgress(0)
-      setIsVideoComplete(false)
+      setIsLoading(true);
+      console.log("Loading lesson:", lessonId);
+      
+      const response = await axios.get(`/lessons/${lessonId}`);
+      console.log("Lesson data received:", response.data);
+      
+      setCurrentLesson(response.data.lesson);
+      setVideoProgress(0);
+      setIsVideoComplete(false);
       
       // Update URL without reloading
-      const url = new URL(window.location)
-      url.searchParams.set("lesson", lessonId)
-      window.history.pushState({}, "", url)
+      const url = new URL(window.location);
+      url.searchParams.set("lesson", lessonId);
+      window.history.pushState({}, "", url);
     } catch (error) {
-      console.error("Error loading lesson:", error)
-      toast.error("Failed to load lesson content")
+      console.error("Error loading lesson:", error);
+      console.error("Response data:", error.response?.data);
+      toast.error("Failed to load lesson content");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
-  
+  };
   const markLessonComplete = async () => {
     if (!currentLesson || isMarkingComplete) return
     
@@ -208,24 +212,39 @@ export default function CourseLearnPage({ params }) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        Loading...
+        <div className="flex flex-col items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
+          <p className="text-muted-foreground">Loading course content...</p>
+        </div>
       </div>
-    )
+    );
   }
+  
   
   if (!course || !course.isEnrolled) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
+      <div className="flex items-center justify-center min-h-screen bg-muted/10">
+        <div className="text-center max-w-md mx-auto p-8 bg-background border rounded-lg shadow-sm">
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-100 mb-4">
+            <Lock className="h-8 w-8 text-red-600" />
+          </div>
           <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
-          <p className="text-muted-foreground mb-6">You are not enrolled in this course.</p>
-          <Button asChild>
-            <Link href={`/courses/${id}`}>Go to Course Page</Link>
-          </Button>
+          <p className="text-muted-foreground mb-6">
+            You are not enrolled in this course or don't have permission to access this content.
+          </p>
+          <div className="space-y-3">
+            <Button asChild className="w-full">
+              <Link href={`/courses/${id}`}>Go to Course Page</Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/courses">Browse Other Courses</Link>
+            </Button>
+          </div>
         </div>
       </div>
-    )
+    );
   }
+  
   
   if (!currentLesson) {
     return (

@@ -223,45 +223,51 @@ export default function CourseEditPage({ params }) {
     }
   }
   
-  const handleThumbnailUpload = () => {
-    fileInputRef.current.click()
-  }
+// In your course edit component
+const handleThumbnailUpload = () => {
+    fileInputRef.current.click();
+  };
   
   const uploadThumbnail = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
+    const file = e.target.files[0];
+    if (!file) return;
     
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
-      toast.error("Please upload a valid image file (JPEG, PNG, or WebP)")
-      return
+      toast.error("Please upload a valid image file (JPEG, PNG, or WebP)");
+      return;
     }
     
-    const formData = new FormData()
-    formData.append('thumbnail', file)
-    
-    setIsUploading(true)
+    setIsUploading(true);
     try {
+      const formData = new FormData();
+      formData.append('thumbnail', file);
+      
+      console.log('Uploading course thumbnail:', file.name, file.type, file.size);
+      
       const response = await axios.post(`/creator/courses/${id}/thumbnail`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
-      })
+      });
+      
+      console.log('Thumbnail upload response:', response.data);
       
       // Update the course object with the new thumbnail URL
       setCourse({
         ...course,
         thumbnail: response.data.thumbnail
-      })
+      });
       
-      toast.success("Thumbnail uploaded successfully")
+      toast.success("Thumbnail uploaded successfully");
     } catch (error) {
-      console.error("Error uploading thumbnail:", error)
-      toast.error("Failed to upload thumbnail")
+      console.error("Error uploading thumbnail:", error);
+      console.error("Error response:", error.response?.data);
+      toast.error("Failed to upload thumbnail: " + (error.response?.data?.message || "Unknown error"));
     } finally {
-      setIsUploading(false)
+      setIsUploading(false);
     }
-  }
+  };
   
   const addLearningPoint = () => {
     if (!newLearningPoint.trim()) return
@@ -888,7 +894,7 @@ export default function CourseEditPage({ params }) {
                   </CardContent>
                 </Card>
               ) : (
-                <Droppable droppableId="modules" type="MODULE">
+                <Droppable droppableId="modules" type="MODULE" isDropDisabled={false}>
                   {(provided) => (
                     <div
                       {...provided.droppableProps}
@@ -952,7 +958,7 @@ export default function CourseEditPage({ params }) {
                                 </CardHeader>
                                 <CardContent>
                                   {module.lessons && module.lessons.length > 0 ? (
-                                    <Droppable droppableId={module._id} type="LESSON">
+                                    <Droppable droppableId={module._id} type="LESSON" isDropDisabled={false}>
                                       {(provided) => (
                                         <div
                                           {...provided.droppableProps}
