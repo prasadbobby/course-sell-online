@@ -31,7 +31,8 @@ import {
   Home,
   X,
   ListChecks,
-  Award
+  Award,
+  Lock
 } from "lucide-react"
 import axios from "@/lib/axios"
 import { useAuth } from "@/components/auth-provider"
@@ -76,17 +77,68 @@ export default function CourseLearnPage({ params }) {
     }
   }, [course, lessonId])
   
+
+
+  const saveProgressToLocalStorage = (courseId, lessonId, progress) => {
+    if (typeof window !== 'undefined') {
+      try {
+        const key = `course_progress_${courseId}`;
+        const savedData = localStorage.getItem(key);
+        let data = savedData ? JSON.parse(savedData) : {};
+        
+        data.lastLessonId = lessonId;
+        data.completedLessons = progress.completedLessons || [];
+        data.progress = progress.progress || 0;
+        
+        localStorage.setItem(key, JSON.stringify(data));
+      } catch (e) {
+        console.error("Error saving progress to localStorage:", e);
+      }
+    }
+  };
+  
+  const getProgressFromLocalStorage = (courseId) => {
+    if (typeof window !== 'undefined') {
+      try {
+        const key = `course_progress_${courseId}`;
+        const savedData = localStorage.getItem(key);
+        return savedData ? JSON.parse(savedData) : null;
+      } catch (e) {
+        console.error("Error reading progress from localStorage:", e);
+        return null;
+      }
+    }
+    return null;
+  };
+  
+
+
   const fetchCourseAndLessons = async () => {
     try {
-      const response = await axios.get(`/courses/${id}`)
-      setCourse(response.data.course)
+      const response = await axios.get(`/courses/${id}`);
+      
+      // Check for saved progress in localStorage
+      const savedProgress = getProgressFromLocalStorage(id);
+      
+      if (savedProgress && response.data.course.isEnrolled) {
+        // If there's saved progress, update the course data
+        response.data.course.enrollment = {
+          ...response.data.course.enrollment,
+          progress: savedProgress.progress,
+          completedLessons: savedProgress.completedLessons,
+          lastAccessedLesson: savedProgress.lastLessonId
+        };
+      }
+      
+      setCourse(response.data.course);
     } catch (error) {
-      console.error("Error fetching course:", error)
-      toast.error("Failed to load course content")
+      console.error("Error fetching course:", error);
+      toast.error("Failed to load course content");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
+  
   
   const loadLesson = async (lessonId) => {
     try {
@@ -112,37 +164,47 @@ export default function CourseLearnPage({ params }) {
       setIsLoading(false);
     }
   };
-  const markLessonComplete = async () => {
-    if (!currentLesson || isMarkingComplete) return
+
+
+const markLessonComplete = async () => {
+  if (!currentLesson || isMarkingComplete) return
+  
+  setIsMarkingComplete(true)
+  try {
+    const response = await axios.post(`/lessons/${currentLesson._id}/complete`)
     
-    setIsMarkingComplete(true)
-    try {
-      const response = await axios.post(`/lessons/${currentLesson._id}/complete`)
-      
-      // Update course progress
-      setCourse(prev => ({
-        ...prev,
-        enrollment: {
-          ...prev.enrollment,
-          progress: response.data.progress,
-          completedLessons: response.data.completedLessons
-        }
-      }))
-      
-      toast.success("Lesson marked as complete")
-      
-      // Move to next lesson if available
-      const nextLesson = getNextLesson()
-      if (nextLesson) {
-        loadLesson(nextLesson._id)
+    // Update course progress
+    const updatedProgress = {
+      progress: response.data.progress,
+      completedLessons: response.data.completedLessons
+    };
+    
+    setCourse(prev => ({
+      ...prev,
+      enrollment: {
+        ...prev.enrollment,
+        ...updatedProgress
       }
-    } catch (error) {
-      console.error("Error marking lesson complete:", error)
-      toast.error("Failed to mark lesson as complete")
-    } finally {
-      setIsMarkingComplete(false)
+    }));
+    
+    // Save progress to localStorage for persistence
+    saveProgressToLocalStorage(id, currentLesson._id, updatedProgress);
+    
+    toast.success("Lesson marked as complete")
+    
+    // Move to next lesson if available
+    const nextLesson = getNextLesson()
+    if (nextLesson) {
+      loadLesson(nextLesson._id)
     }
+  } catch (error) {
+    console.error("Error marking lesson complete:", error)
+    toast.error("Failed to mark lesson as complete")
+  } finally {
+    setIsMarkingComplete(false)
   }
+}
+
   
   const handleVideoProgress = (state) => {
     // For video lessons, track progress

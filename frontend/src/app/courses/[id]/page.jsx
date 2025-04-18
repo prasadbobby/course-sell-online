@@ -52,65 +52,105 @@ export default function CourseDetailPage({ params }) {
       fetchCourseDetails()
     }, [id, isCreatorPreview])
     
-    const fetchCourseDetails = async () => {
-      try {
-        console.log("Fetching course with ID:", id);
-        console.log("Is creator preview:", isCreatorPreview);
-        
-        let response;
-        
-        if (isCreatorPreview && isAuthenticated && user?.role === 'creator') {
-          // Use the creator preview endpoint
-          console.log("Fetching from creator preview endpoint");
-          response = await axios.get(`/creator/courses/${id}/preview`);
-        } else {
-          // Use regular course endpoint
-          console.log("Fetching from regular course endpoint");
-          response = await axios.get(`/courses/${id}`);
-        }
-        
-        console.log("Course data received:", response.data);
-        
-        // Make sure we handle enrollment status correctly
-        if (response.data.course) {
-          setCourse({
-            ...response.data.course,
-            isEnrolled: !!response.data.course.isEnrolled
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching course:", error);
-        console.error("Response data:", error.response?.data);
-        toast.error("Failed to load course details");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+
+const fetchCourseDetails = async () => {
+  try {
+    console.log("Fetching course with ID:", id);
+    console.log("Is creator preview:", isCreatorPreview);
     
-  
-  
-  const enrollFreeCourse = async () => {
-    if (!isAuthenticated) {
-      router.push(`/login?redirect=/courses/${id}`)
-      return
+    let response;
+    
+    if (isCreatorPreview && isAuthenticated && user?.role === 'creator') {
+      // Use the creator preview endpoint
+      console.log("Fetching from creator preview endpoint");
+      response = await axios.get(`/creator/courses/${id}/preview`);
+    } else {
+      // Use regular course endpoint
+      console.log("Fetching from regular course endpoint");
+      response = await axios.get(`/courses/${id}`);
     }
     
-    setIsEnrolling(true)
-    try {
-      const response = await axios.post(`/courses/${id}/enroll`)
-      toast.success("Successfully enrolled in the course")
+    console.log("Course data received:", response.data);
+    
+    // Double-check enrollment status
+    if (isAuthenticated && !response.data.course.isEnrolled) {
+      try {
+        const enrollmentCheck = await axios.get(`/users/me/courses`);
+        const isActuallyEnrolled = enrollmentCheck.data.enrolledCourses.some(
+          enrollment => enrollment.course._id === id
+        );
+        
+        if (isActuallyEnrolled) {
+          // If actually enrolled but API doesn't show it, override
+          console.log("User is actually enrolled - overriding API response");
+          response.data.course.isEnrolled = true;
+        }
+      } catch (enrollError) {
+        console.error("Error double-checking enrollment:", enrollError);
+      }
+    }
+    
+    // Make sure we handle enrollment status correctly
+    if (response.data.course) {
+      setCourse({
+        ...response.data.course,
+        isEnrolled: !!response.data.course.isEnrolled
+      });
+    }
+  } catch (error) {
+    console.error("Error fetching course:", error);
+    console.error("Response data:", error.response?.data);
+    toast.error("Failed to load course details");
+  } finally {
+    setIsLoading(false);
+  }
+};
+    
+  
+  
+  // Function to enroll in a free course
+const enrollFreeCourse = async () => {
+  if (!isAuthenticated) {
+    router.push(`/login?redirect=/courses/${id}`);
+    return;
+  }
+  
+  setIsEnrolling(true);
+  try {
+    const response = await axios.post(`/courses/${id}/enroll`);
+    toast.success("Successfully enrolled in the course");
+    
+    // Update the course state immediately to reflect enrollment
+    setCourse({
+      ...course,
+      isEnrolled: true,
+      enrollment: response.data.enrollment || {
+        progress: 0,
+        completedLessons: []
+      }
+    });
+    
+    // Force a revalidation of the course API data
+    fetchCourseDetails();
+  } catch (error) {
+    console.error("Error enrolling:", error);
+    
+    // Check if already enrolled error
+    if (error.response?.data?.message?.includes("already enrolled")) {
+      toast.info("You are already enrolled in this course");
+      
+      // Update the UI to show enrolled status anyway
       setCourse({
         ...course,
-        isEnrolled: true,
-        enrollment: response.data.enrollment
-      })
-    } catch (error) {
-      console.error("Error enrolling:", error)
-      toast.error(error.response?.data?.message || "Failed to enroll in the course")
-    } finally {
-      setIsEnrolling(false)
+        isEnrolled: true
+      });
+    } else {
+      toast.error(error.response?.data?.message || "Failed to enroll in the course");
     }
+  } finally {
+    setIsEnrolling(false);
   }
+};
   
 const initiatePayment = async () => {
     if (!isAuthenticated) {

@@ -78,7 +78,7 @@ export default function CourseEditPage({ params }) {
   const { user, isAuthenticated, loading } = useAuth()
   const router = useRouter()
   const fileInputRef = useRef(null)
-  
+  const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [course, setCourse] = useState(null)
   const [modules, setModules] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -514,28 +514,9 @@ const handleThumbnailUpload = () => {
       return
     }
     
-    if (!confirm("Are you sure you want to publish this course? Once published, you won't be able to delete modules or lessons.")) {
-      return
-    }
-    
-    setIsPublishing(true)
-    try {
-      await axios.post(`/creator/courses/${id}/publish`)
-      
-      // Update course status
-      setCourse({
-        ...course,
-        isPublished: true
-      })
-      
-      toast.success("Course published successfully! It will be reviewed by our team before being visible to students.")
-    } catch (error) {
-      console.error("Error publishing course:", error)
-      toast.error(error.response?.data?.message || "Failed to publish course")
-    } finally {
-      setIsPublishing(false)
-    }
-  }
+    // Replace the default alert with a Dialog
+    setShowPublishDialog(true);
+  };
   
   const onDragEnd = async (result) => {
     const { destination, source, type } = result
@@ -1594,6 +1575,47 @@ const handleThumbnailUpload = () => {
             </Card>
           </TabsContent>
         </Tabs>
+        <Dialog open={showPublishDialog} onOpenChange={setShowPublishDialog}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Publish Course</DialogTitle>
+      <DialogDescription>
+        Are you sure you want to publish this course? Once published, you won't be able to delete modules or lessons.
+      </DialogDescription>
+    </DialogHeader>
+    <DialogFooter>
+      <Button variant="outline" onClick={() => setShowPublishDialog(false)}>
+        Cancel
+      </Button>
+      <Button 
+        onClick={async () => {
+          setIsPublishing(true);
+          try {
+            await axios.post(`/creator/courses/${id}/publish`);
+            
+            // Update course status
+            setCourse({
+              ...course,
+              isPublished: true
+            });
+            
+            toast.success("Course published successfully! It will be reviewed by our team before being visible to students.");
+            setShowPublishDialog(false);
+          } catch (error) {
+            console.error("Error publishing course:", error);
+            toast.error(error.response?.data?.message || "Failed to publish course");
+          } finally {
+            setIsPublishing(false);
+          }
+        }}
+        disabled={isPublishing}
+      >
+        {isPublishing ? "Publishing..." : "Publish"}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+
       </div>
     </div>
   )
